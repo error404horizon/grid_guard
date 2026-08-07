@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GridGuard | Utility Pole Health Monitoring</title>
+<meta name="description" content="GridGuard — Intelligent Utility Pole Health Monitoring System" />
+
+<!-- Bootstrap 5 -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<!-- Bootstrap Icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Chart.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ================= CRITICAL ALARM OVERLAY ================= -->
+<div id="alarmOverlay" class="alarm-overlay d-none">
+  <div class="alarm-modal">
+    <div class="alarm-icon"><i class="bi bi-exclamation-triangle-fill"></i></div>
+    <h2>CRITICAL ALERT</h2>
+    <p id="alarmMessage">Pole P101 has entered a critical state.</p>
+    <button class="btn btn-outline-light btn-acknowledge" id="acknowledgeAlarm">
+      <i class="bi bi-check2-circle me-2"></i>Acknowledge
+    </button>
+  </div>
+</div>
+
+<div class="app-shell" id="appShell">
+
+  <!-- ================= SIDEBAR ================= -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-mark"><i class="bi bi-broadcast-pin"></i></div>
+      <div class="brand-text">
+        <span class="brand-title">GRIDGUARD</span>
+        <span class="brand-sub">SCADA Console</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="#dashboard" class="nav-link active" data-section="dashboard">
+        <i class="bi bi-grid-1x2-fill"></i><span>Dashboard</span>
+      </a>
+      <a href="#pole-status" class="nav-link" data-section="pole-status">
+        <i class="bi bi-signpost-split-fill"></i><span>Pole Status</span>
+      </a>
+      <a href="#analytics" class="nav-link" data-section="analytics">
+        <i class="bi bi-graph-up"></i><span>Analytics</span>
+      </a>
+      <a href="#alerts" class="nav-link" data-section="alerts">
+        <i class="bi bi-bell-fill"></i><span>Alerts</span>
+        <span class="nav-badge" id="alertCountBadge">0</span>
+      </a>
+      <a href="#maintenance" class="nav-link" data-section="maintenance">
+        <i class="bi bi-tools"></i><span>Maintenance</span>
+      </a>
+      <a href="#settings" class="nav-link" data-section="settings">
+        <i class="bi bi-gear-fill"></i><span>Settings</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="pole-chip">
+        <i class="bi bi-cpu"></i>
+        <div>
+          <div class="pole-chip-id">POLE P101</div>
+          <div class="pole-chip-fw">FW v1.4.2</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ================= MAIN ================= -->
+  <div class="main-area">
+
+    <!-- ================= HEADER ================= -->
+    <header class="topbar">
+      <button class="btn-burger d-lg-none" id="burgerBtn"><i class="bi bi-list"></i></button>
+
+      <div class="topbar-title">
+        <h1>GRIDGUARD</h1>
+        <span>Utility Pole Monitoring System</span>
+      </div>
+
+      <div class="topbar-right">
+        <div class="topbar-item datetime-item">
+          <i class="bi bi-clock-history"></i>
+          <div>
+            <div class="dt-time" id="liveTime">--:--:--</div>
+            <div class="dt-date" id="liveDate">-- --- ----</div>
+          </div>
+        </div>
+
+        <div class="topbar-item conn-item" id="connStatusWrap">
+          <span class="conn-dot" id="connDot"></span>
+          <div>
+            <div class="conn-label" id="connLabel">Connecting…</div>
+            <div class="conn-sub">Firebase Realtime DB</div>
+          </div>
+        </div>
+
+        <button class="btn-icon-bell" id="bellBtn" title="Alerts">
+          <i class="bi bi-bell"></i>
+          <span class="bell-dot d-none" id="bellDot"></span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ================= CONTENT ================= -->
+    <main class="content" id="mainContent">
+
+      <!-- Global status strip -->
+      <section class="status-strip" id="statusStrip">
+        <div class="status-strip-left">
+          <span class="status-pill" id="globalStatusPill">
+            <i class="bi bi-shield-check"></i> SAFE
+          </span>
+          <span class="status-strip-text">System nominal — all readings within safe thresholds</span>
+        </div>
+        <div class="status-strip-right">
+          <span><i class="bi bi-arrow-repeat"></i> Uptime: <strong id="uptimeValue">--</strong></span>
+          <span><i class="bi bi-clock"></i> Last update: <strong id="lastUpdateValue">--</strong></span>
+        </div>
+      </section>
+
+      <!-- ================= LIVE SENSOR CARDS ================= -->
+      <section class="sensor-grid">
+
+        <div class="sensor-card" id="cardTilt" data-status="safe">
+          <div class="sensor-card-top">
+            <div class="sensor-icon tilt-icon"><i class="bi bi-compass"></i></div>
+            <span class="sensor-status-tag" id="tiltStatusTag">SAFE</span>
+          </div>
+          <div class="sensor-value"><span id="tiltValue">0.0</span><small>°</small></div>
+          <div class="sensor-label">Pole Tilt</div>
+          <div class="sensor-bar"><div class="sensor-bar-fill" id="tiltBar"></div></div>
+          <div class="sensor-thresholds">Safe &lt; 5° · Warn 5–8° · Critical &gt; 8°</div>
+        </div>
+
+        <div class="sensor-card" id="cardTemp" data-status="safe">
+          <div class="sensor-card-top">
+            <div class="sensor-icon temp-icon"><i class="bi bi-thermometer-half"></i></div>
+            <span class="sensor-status-tag" id="tempStatusTag">SAFE</span>
+          </div>
+          <div class="sensor-value"><span id="tempValue">0.0</span><small>°C</small></div>
+          <div class="sensor-label">Temperature</div>
+          <div class="sensor-bar"><div class="sensor-bar-fill" id="tempBar"></div></div>
+          <div class="sensor-thresholds">Safe &lt; 40°C · Warn 40–55°C · Critical &gt; 55°C</div>
+        </div>
+
+        <div class="sensor-card" id="cardSmoke" data-status="safe">
+          <div class="sensor-card-top">
+            <div class="sensor-icon smoke-icon"><i class="bi bi-cloud-haze2-fill"></i></div>
+            <span class="sensor-status-tag" id="smokeStatusTag">SAFE</span>
+          </div>
+          <div class="sensor-value"><span id="smokeValue">0</span><small>ppm</small></div>
+          <div class="sensor-label">Smoke Level</div>
+          <div class="sensor-bar"><div class="sensor-bar-fill" id="smokeBar"></div></div>
+          <div class="sensor-thresholds">Safe &lt; 150 · Warn 150–400 · Critical &gt; 400</div>
+        </div>
+
+        <div class="sensor-card" id="cardLdr" data-status="safe">
+          <div class="sensor-card-top">
+            <div class="sensor-icon ldr-icon"><i class="bi bi-lightbulb-fill"></i></div>
+            <span class="sensor-status-tag" id="ldrStatusTag">--</span>
+          </div>
+          <div class="sensor-value"><span id="ldrValue">--</span></div>
+          <div class="sensor-label">Street Light</div>
+          <div class="sensor-bar"><div class="sensor-bar-fill" id="ldrBar"></div></div>
+          <div class="sensor-thresholds">Ambient light-dependent resistor state</div>
+        </div>
+
+      </section>
+
+      <!-- ================= HEALTH + MAP ROW ================= -->
+      <section class="row-flex">
+
+        <div class="panel health-panel">
+          <div class="panel-head">
+            <h3><i class="bi bi-heart-pulse-fill me-2"></i>Pole Health</h3>
+          </div>
+          <div class="health-body">
+            <div class="gauge-wrap">
+              <svg viewBox="0 0 200 200" class="gauge-svg">
+                <circle cx="100" cy="100" r="86" class="gauge-track"></circle>
+                <circle cx="100" cy="100" r="86" class="gauge-progress" id="gaugeProgress"></circle>
+              </svg>
+              <div class="gauge-center">
+                <span class="gauge-percent" id="healthPercent">--</span>
+                <span class="gauge-caption">Health</span>
+              </div>
+            </div>
+            <div class="health-details">
+              <div class="health-row">
+                <span class="health-row-label">Status</span>
+                <span class="status-pill sm" id="healthStatusPill">--</span>
+              </div>
+              <div class="health-row">
+                <span class="health-row-label">Recommendation</span>
+                <span class="health-recommend" id="maintenanceRecommend">Awaiting data…</span>
+              </div>
+              <div class="health-row">
+                <span class="health-row-label">Uptime</span>
+                <span id="healthUptime">--</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel map-panel">
+          <div class="panel-head">
+            <h3><i class="bi bi-geo-alt-fill me-2"></i>Location</h3>
+          </div>
+          <div class="map-body" id="mapBody">
+            <div class="map-placeholder">
+              <i class="bi bi-map"></i>
+              <span id="gpsStatusText">GPS Not Available</span>
+            </div>
+            <div class="map-coords" id="mapCoords" style="display:none;">
+              <div><span>Latitude</span><strong id="latValue">--</strong></div>
+              <div><span>Longitude</span><strong id="lngValue">--</strong></div>
+            </div>
+            <a href="#" target="_blank" rel="noopener" class="btn btn-maps d-none" id="mapsLink">
+              <i class="bi bi-box-arrow-up-right me-2"></i>Open in Google Maps
+            </a>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ================= CHARTS ================= -->
+      <section class="panel charts-panel" id="analytics">
+        <div class="panel-head">
+          <h3><i class="bi bi-bar-chart-line-fill me-2"></i>Sensor Trends</h3>
+          <span class="panel-sub">Last 60 readings</span>
+        </div>
+        <div class="charts-grid">
+          <div class="chart-box">
+            <div class="chart-box-title">Tilt History (°)</div>
+            <canvas id="tiltChart"></canvas>
+          </div>
+          <div class="chart-box">
+            <div class="chart-box-title">Temperature History (°C)</div>
+            <canvas id="tempChart"></canvas>
+          </div>
+          <div class="chart-box">
+            <div class="chart-box-title">Smoke History (ppm)</div>
+            <canvas id="smokeChart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= EVENT LOG ================= -->
+      <section class="panel log-panel" id="alerts">
+        <div class="panel-head">
+          <h3><i class="bi bi-journal-text me-2"></i>Event Log</h3>
+          <button class="btn btn-clear-log" id="clearLogBtn"><i class="bi bi-trash3 me-1"></i>Clear</button>
+        </div>
+        <div class="log-list" id="eventLog">
+          <div class="log-empty" id="logEmpty">No events recorded yet.</div>
+        </div>
+      </section>
+
+      <!-- ================= POLE STATUS / MAINTENANCE (extra sections) ================= -->
+      <section class="panel" id="pole-status">
+        <div class="panel-head">
+          <h3><i class="bi bi-signpost-split-fill me-2"></i>Pole Status Summary</h3>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-dark table-borderless status-table">
+            <thead>
+              <tr>
+                <th>Pole ID</th><th>Tilt</th><th>Temp</th><th>Smoke</th><th>Light</th><th>Health</th><th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>P101</td>
+                <td id="tblTilt">--</td>
+                <td id="tblTemp">--</td>
+                <td id="tblSmoke">--</td>
+                <td id="tblLdr">--</td>
+                <td id="tblHealth">--</td>
+                <td><span class="status-pill sm" id="tblStatus">--</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel" id="maintenance">
+        <div class="panel-head">
+          <h3><i class="bi bi-tools me-2"></i>Maintenance Guidance</h3>
+        </div>
+        <div class="maintenance-grid">
+          <div class="maintenance-card safe">
+            <i class="bi bi-check-circle-fill"></i>
+            <h4>SAFE</h4>
+            <p>No maintenance required. Continue routine monitoring.</p>
+          </div>
+          <div class="maintenance-card warning">
+            <i class="bi bi-exclamation-circle-fill"></i>
+            <h4>WARNING</h4>
+            <p>Inspection recommended within 48 hours.</p>
+          </div>
+          <div class="maintenance-card critical">
+            <i class="bi bi-x-octagon-fill"></i>
+            <h4>CRITICAL</h4>
+            <p>Immediate maintenance required. Dispatch field crew.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="settings">
+        <div class="panel-head">
+          <h3><i class="bi bi-gear-fill me-2"></i>Settings</h3>
+        </div>
+        <div class="settings-grid">
+          <div class="setting-item">
+            <div>
+              <div class="setting-title">Alarm Sound</div>
+              <div class="setting-sub">Play audio when status becomes CRITICAL</div>
+            </div>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="alarmSoundToggle" checked>
+            </div>
+          </div>
+          <div class="setting-item">
+            <div>
+              <div class="setting-title">Monitored Pole</div>
+              <div class="setting-sub">Firebase path: GridGuard/poles/&lt;id&gt;</div>
+            </div>
+            <input type="text" class="form-control setting-input" id="poleIdInput" value="P101">
+          </div>
+        </div>
+      </section>
+
+      <footer class="app-footer">
+        GridGuard &copy; <span id="footerYear"></span> — Intelligent Utility Pole Health Monitoring System
+      </footer>
+
+    </main>
+  </div>
+</div>
+
+<div class="sidebar-scrim d-none" id="sidebarScrim"></div>
+
+
+<!-- Bootstrap Bundle -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+
+<!-- App scripts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script type="module" src="./js/script.js"></script>
+<script type="module" src="./js/charts.js"></script>
+<script type="module" src="./js/notification.js"></script>
+</body>
+</html>
