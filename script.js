@@ -5,7 +5,7 @@
    Firebase realtime stream into the UI.
    ========================================================= */
 
-import { subscribeToPole, subscribeToConnectionState, setActivePole, getActivePole } from "../firebase.js";
+import { subscribeToPole, subscribeToConnectionState, setActivePole, getActivePole } from "./firebase.js";
 
 /* ---------------------------------------------------------
    DOM references
