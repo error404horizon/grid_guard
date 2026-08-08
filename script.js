@@ -80,9 +80,9 @@ const GAUGE_CIRCUMFERENCE = 2 * Math.PI * 86; // r=86, matches SVG
    Thresholds (per spec)
 --------------------------------------------------------- */
 const THRESHOLDS = {
-  tilt: { warn: 5, crit: 8, max: 12 },
-  temp: { warn: 40, crit: 55, max: 70 },
-  smoke: { warn: 150, crit: 400, max: 600 },
+    tilt: { warn: 5, crit: 20, max: 25 },
+    temp: { warn: 40, crit: 55, max: 70 },
+    smoke: { warn: 150, crit: 400, max: 600 }
 };
 
 function classify(value, key) {
